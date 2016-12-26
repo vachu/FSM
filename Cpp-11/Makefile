@@ -21,7 +21,7 @@
 
 TARGET_MAIN = FSMTest
 TARGETS     = $(TARGET_MAIN)
-SRCS        = main.cpp
+SRCS        = main.cpp Fsm.cpp Fsm.h
 
 FLAGS += -std=c++11
 ifndef RELEASE

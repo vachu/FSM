@@ -27,3 +27,10 @@
 *.exe
 *.out
 *.app
+
+# Netbease Project directory and files
+nbproject/
+nbproject/**
+
+# specific files
+**/FSMTest
