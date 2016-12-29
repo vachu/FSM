@@ -20,17 +20,46 @@
  *
  * Created on 26 December, 2016, 8:00 PM
  */
+#include <map>
+#include <vector>
+#include <string>
+#include <functional>
 
 #ifndef FSM_H
 #define FSM_H
 
 class Fsm {
 public:
-    Fsm();
-    Fsm(const Fsm& orig);
+    typedef std::function<std::string ()> Handler;
+    typedef std::vector<std::string> StrList;
+    
+    Fsm() = delete;
+    Fsm(const StrList& events, const StrList& states,
+            const std::string& initState);
     virtual ~Fsm();
+    
+    bool registerEventHandler(
+            const std::string& event,
+            const std::string& currentState,
+            Handler func,
+            const StrList& nextStates = {}
+        );
+    bool raiseEvent(const std::string& event);
+    std::string getCurrentState() const;
+    
+    operator bool() const;
+    
 private:
+    typedef std::pair<std::string, std::string> EventStatePair;
+    
+    std::string m_currentState;
+    StrList m_events, m_states;
+    bool m_isFsmOk;
 
+    std::map<EventStatePair, StrList> m_evStPairNextStates;
+    std::map<EventStatePair, Handler> m_evStPairHandlers;
+
+    bool isValid(const StrList& list, const std::string& state) const;
 };
 
 #endif /* FSM_H */

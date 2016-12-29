@@ -16,7 +16,7 @@
 
 #
 # NOTE: This may not be the most ideal Makefile.  Simplicity was overwhelmingly
-# preferred over everthing else.
+# preferred over everything else.
 #
 
 TARGET_MAIN = FSMTest
