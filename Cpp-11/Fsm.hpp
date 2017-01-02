@@ -24,8 +24,10 @@
 #include <algorithm>
 #include "Fsm.h"
 
-namespace {
+#ifndef __FSM_HPP__
+#define __FSM_HPP__
 
+namespace {
     template <typename T>
     bool isInList(const std::vector<T>& list, const T& val) {
         return (!list.empty() &&
@@ -40,10 +42,7 @@ namespace {
         }
         return false;
     }
-
 } // namespace
-
-namespace generic {
 
 template <typename TEvent, typename TState>
 Fsm<TEvent, TState>::Fsm(
@@ -119,15 +118,18 @@ bool Fsm<TEvent, TState>::raiseEvent(const TEvent& event) {
     }
     
     auto nextState = handler();
-    if (!isInList(m_evStPairNextStates[evStPair], nextState))
-        return false;
-    
-    m_currentState = nextState;
-    return true;
+    if (isInList(m_evStPairNextStates[evStPair], nextState) ||
+        isInList(m_events, nextState) )
+    {
+        m_currentState = nextState;
+        return true;
+    }
+    return false;
 }
 
 template <typename TEvent, typename TState>
 TState Fsm<TEvent, TState>::getCurrentState() const {
     return m_currentState;
 }
-} // namespace generic
+
+#endif // __FSM_HPP__

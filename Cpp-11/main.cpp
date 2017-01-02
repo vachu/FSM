@@ -14,6 +14,14 @@
  *  limitations under the License.
  */
 
+#include <iostream>
+#include "Fsm.h"
+
 int main(void) {
+    std::vector<int> events = {1, 2, 3};
+    std::vector<int> states = {11, 22, 33};
+    Fsm<> fsmObj(events, states, 11);
+    
+    std::cout << fsmObj << ", " << fsmObj.getCurrentState() << std::endl;
     return 0;
 }

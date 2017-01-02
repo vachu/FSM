@@ -29,8 +29,6 @@
 #include <string>
 #include <functional>
 
-namespace generic {
-
 template <typename TEvent = int, typename TState = int>
 class Fsm {
 public:
@@ -66,7 +64,7 @@ private:
     std::map<EventStatePair, Handler> m_evStPairHandlers;
 };
 
-} // namespace generic
+#include "Fsm.hpp"
 
 #endif /* FSMT_H */
 
