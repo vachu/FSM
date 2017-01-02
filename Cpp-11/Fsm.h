@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Srivathsan Madhavan <m_dot_srivathsan_at_gmail_dot_com>.
+ * Copyright 2017 Srivathsan Madhavan <m_dot_srivathsan_at_gmail_dot_com>.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,52 +15,58 @@
  */
 
 /* 
- * File:   Fsm.h
+ * File:   FsmT.h
  * Author: Srivathsan Madhavan <m_dot_srivathsan_at_gmail_dot_com>
  *
- * Created on 26 December, 2016, 8:00 PM
+ * Created on 2 January, 2017, 10:06 AM
  */
+
+#ifndef FSMT_H
+#define FSMT_H
+
 #include <map>
 #include <vector>
 #include <string>
 #include <functional>
 
-#ifndef FSM_H
-#define FSM_H
+namespace generic {
 
+template <typename TEvent = int, typename TState = int>
 class Fsm {
 public:
-    typedef std::function<std::string ()> Handler;
-    typedef std::vector<std::string> StrList;
+    typedef std::function<TState ()> Handler;
+    typedef std::vector<TState> StateList;
+    typedef std::vector<TEvent> EventList;
     
     Fsm() = delete;
-    Fsm(const StrList& events, const StrList& states,
-            const std::string& initState);
+    Fsm(const EventList& events, const StateList& states,
+            const TState& initState);
     virtual ~Fsm();
-    
+
     bool registerEventHandler(
-            const std::string& event,
-            const std::string& currentState,
+            const TEvent& event,
+            const TState& currentState,
             Handler func,
-            const StrList& nextStates = {}
+            const StateList& nextStates = {}
         );
-    bool raiseEvent(const std::string& event);
-    std::string getCurrentState() const;
+    bool raiseEvent(const TEvent& event);
+    TState getCurrentState() const;
     
     operator bool() const;
     
 private:
-    typedef std::pair<std::string, std::string> EventStatePair;
+    typedef std::pair<TEvent, TState> EventStatePair;
     
-    std::string m_currentState;
-    StrList m_events, m_states;
+    TState m_currentState;
+    EventList m_events;
+    StateList m_states;
     bool m_isFsmOk;
 
-    std::map<EventStatePair, StrList> m_evStPairNextStates;
+    std::map<EventStatePair, StateList> m_evStPairNextStates;
     std::map<EventStatePair, Handler> m_evStPairHandlers;
-
-    bool isValid(const StrList& list, const std::string& state) const;
 };
 
-#endif /* FSM_H */
+} // namespace generic
+
+#endif /* FSMT_H */
 

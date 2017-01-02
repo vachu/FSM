@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Srivathsan Madhavan <m_dot_srivathsan_at_gmail_dot_com>.
+ * Copyright 2017 Srivathsan Madhavan <m_dot_srivathsan_at_gmail_dot_com>.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,46 +15,51 @@
  */
 
 /* 
- * File:   Fsm.cpp
+ * File:   FsmT.cpp
  * Author: Srivathsan Madhavan <m_dot_srivathsan_at_gmail_dot_com>
  * 
- * Created on 26 December, 2016, 8:00 PM IST (GMT+05:30)
+ * Created on 2 January, 2017, 10:06 AM IST (GMT+05:30)
  */
-#include <algorithm>
 
+#include <algorithm>
 #include "Fsm.h"
 
 namespace {
-    bool isEmptyString(const std::string& s) {
-        return (s.empty() || s.find_first_not_of(" \t\r\n\v\f\0") == s.npos);
-    }
-}
 
-Fsm::Fsm(const StrList& events, const StrList& states, const std::string& initState)
+    template <typename T>
+    bool isInList(const std::vector<T>& list, const T& val) {
+        return (!list.empty() &&
+                std::find(list.begin(), list.end(), val) != list.end());
+    }
+    
+    template <typename T>
+    bool hasDuplicates(const std::vector<T>& list) {
+        for (auto elem: list) {
+            if (std::count(list.begin(), list.end(), elem) > 1)
+                return true;
+        }
+        return false;
+    }
+
+} // namespace
+
+namespace generic {
+
+template <typename TEvent, typename TState>
+Fsm<TEvent, TState>::Fsm(
+                        const EventList& events,
+                        const StateList& states,
+                        const TState& initState
+                    )
 {
-    auto stBegin = states.begin(); auto stEnd = states.end();
-    auto evBegin = events.begin(); auto evEnd = events.end();
     m_isFsmOk = (
-            events.size() > 0 &&
-            states.size() > 0 &&
-            std::find_if(stBegin, stEnd, isEmptyString) == stEnd && // no empty state value
-            std::find_if(evBegin, evEnd, isEmptyString) == evEnd && // no empty event value
-            isValid(states, initState)
+            events.size() > 0 && states.size() > 0 && isInList(states, initState)
         );
     if (!m_isFsmOk) return;
     
-    // check for repetitions in events and states vectors
-    for (auto ev: events) {
-        if (std::count(evBegin, evEnd, ev) > 1) {
-            m_isFsmOk = false;
-            return;
-        }
-    }
-    for (auto st: states) {
-        if (std::count(stBegin, stEnd, st) > 1) {
-            m_isFsmOk = false;
-            return;
-        }
+    if (hasDuplicates(events) || hasDuplicates(states)) {
+        m_isFsmOk = false;
+        return;
     }
 
     // Everything is fine; do the main initialization
@@ -63,27 +68,30 @@ Fsm::Fsm(const StrList& events, const StrList& states, const std::string& initSt
     m_states = states;
 }
 
-Fsm::~Fsm() {
+template <typename TEvent, typename TState>
+Fsm<TEvent, TState>::~Fsm() {
 }
 
-Fsm::operator bool() const {
+template <typename TEvent, typename TState>
+Fsm<TEvent, TState>::operator bool() const {
     return m_isFsmOk;
 }
 
-bool Fsm::registerEventHandler(
-        const std::string& event,
-        const std::string& currentState,
+template <typename TEvent, typename TState>
+bool Fsm<TEvent, TState>::registerEventHandler(
+        const TEvent& event,
+        const TState& currentState,
         Handler handler,
-        const StrList& nextStates
+        const std::vector<TState>& nextStates
     )
 {
     if (!m_isFsmOk || nextStates.size() == 0 ||
-        !isValid(m_events, event) || !isValid(m_states, currentState))
+        !isInList(m_events, event) || !isInList(m_states, currentState))
     {
         return false;
     }
     for (auto nextState: nextStates) {
-        if (!isValid(m_states, nextState))
+        if (!isInList(m_states, nextState))
             return false;
     }
     
@@ -94,13 +102,9 @@ bool Fsm::registerEventHandler(
     return true;
 }
 
-bool Fsm::isValid(const StrList& list, const std::string& val) const {
-    return (m_isFsmOk && !list.empty() && !isEmptyString(val) &&
-            std::find(list.begin(), list.end(), val) != list.end());
-}
-
-bool Fsm::raiseEvent(const std::string& event) {
-    if (!isValid(m_events, event) || !(*this))
+template <typename TEvent, typename TState>
+bool Fsm<TEvent, TState>::raiseEvent(const TEvent& event) {
+    if (!isInList(m_events, event) || !(*this))
         return false;
     
     auto end = m_evStPairHandlers.end();
@@ -115,13 +119,15 @@ bool Fsm::raiseEvent(const std::string& event) {
     }
     
     auto nextState = handler();
-    if (!isValid(m_evStPairNextStates[evStPair], nextState))
+    if (!isInList(m_evStPairNextStates[evStPair], nextState))
         return false;
     
     m_currentState = nextState;
     return true;
 }
 
-std::string Fsm::getCurrentState() const {
+template <typename TEvent, typename TState>
+TState Fsm<TEvent, TState>::getCurrentState() const {
     return m_currentState;
 }
+} // namespace generic
