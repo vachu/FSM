@@ -15,21 +15,22 @@
  */
 
 /* 
- * File:   FsmT.cpp
+ * File:   Fsm.hpp
  * Author: Srivathsan Madhavan <m_dot_srivathsan_at_gmail_dot_com>
  * 
  * Created on 2 January, 2017, 10:06 AM IST (GMT+05:30)
  */
 
-#include <algorithm>
-#include "Fsm.h"
-
 #ifndef __FSM_HPP__
 #define __FSM_HPP__
 
+#include <algorithm>
+#include <sstream>
+#include "Fsm.h"
+
 namespace {
     template <typename T>
-    bool isInList(const std::vector<T>& list, const T& val) {
+    bool isIn(const std::vector<T>& list, const T& val) {
         return (!list.empty() &&
                 std::find(list.begin(), list.end(), val) != list.end());
     }
@@ -42,6 +43,28 @@ namespace {
         }
         return false;
     }
+    
+    template <typename T>
+    std::string default2String(const T& val) {
+        std::stringstream ss;
+        ss << val;
+        return ss.str();
+    }
+    
+    template <typename T>
+    void dumpList(
+            const std::vector<T>& vec,
+            std::stringstream& ss,
+            std::function<std::string (const T&)>& funcT2String
+        )
+    {
+        ss << "[";
+        int ctr = 0;
+        for (auto v: vec) {
+            ss << (ctr++ > 0 ? ", " : "") << funcT2String(v);
+        }
+        ss << "]";
+    }
 } // namespace
 
 template <typename TEvent, typename TState>
@@ -52,7 +75,7 @@ Fsm<TEvent, TState>::Fsm(
                     )
 {
     m_isFsmOk = (
-            events.size() > 0 && states.size() > 0 && isInList(states, initState)
+            events.size() > 0 && states.size() > 0 && isIn(states, initState)
         );
     if (!m_isFsmOk) return;
     
@@ -80,17 +103,17 @@ template <typename TEvent, typename TState>
 bool Fsm<TEvent, TState>::registerEventHandler(
         const TEvent& event,
         const TState& currentState,
-        Handler handler,
+        HandlerFunc handler,
         const std::vector<TState>& nextStates
     )
 {
     if (!m_isFsmOk || nextStates.size() == 0 ||
-        !isInList(m_events, event) || !isInList(m_states, currentState))
+        !isIn(m_events, event) || !isIn(m_states, currentState))
     {
         return false;
     }
     for (auto nextState: nextStates) {
-        if (!isInList(m_states, nextState))
+        if (!isIn(m_states, nextState))
             return false;
     }
     
@@ -103,7 +126,7 @@ bool Fsm<TEvent, TState>::registerEventHandler(
 
 template <typename TEvent, typename TState>
 bool Fsm<TEvent, TState>::raiseEvent(const TEvent& event) {
-    if (!isInList(m_events, event) || !(*this))
+    if (!isIn(m_events, event) || !(*this))
         return false;
     
     auto end = m_evStPairHandlers.end();
@@ -118,18 +141,60 @@ bool Fsm<TEvent, TState>::raiseEvent(const TEvent& event) {
     }
     
     auto nextState = handler();
-    if (isInList(m_evStPairNextStates[evStPair], nextState) ||
-        isInList(m_events, nextState) )
-    {
-        m_currentState = nextState;
-        return true;
+    if (m_evStPairNextStates.size() == 0) {
+        if (!isIn(m_events, nextState))
+            return false;
+    } else {
+        if (!isIn(m_evStPairNextStates[evStPair], nextState))
+            return false;
     }
-    return false;
+    m_currentState = nextState;
+    return true;
 }
 
 template <typename TEvent, typename TState>
 TState Fsm<TEvent, TState>::getCurrentState() const {
     return m_currentState;
+}
+
+template <typename TEvent, typename TState>
+std::string Fsm<TEvent, TState>::dump(
+                                    Event2StringFunc e2s,
+                                    State2StringFunc s2s
+                                ) const
+{
+    if (!e2s) e2s = default2String<TEvent>;
+    if (!s2s) s2s = default2String<TState>;
+    
+    std::stringstream ss;
+    ss  << "Status       : " << (m_isFsmOk ? "OK" : "ERROR")    << std::endl
+        << "Valid Events : "; dumpList(m_events, ss, e2s); ss   << std::endl
+        << "Valid States : "; dumpList(m_states, ss, s2s); ss   << std::endl
+        << "Current State: " << s2s(m_currentState)             << std::endl
+        << "Transitions  : "                                    << std::endl;
+    auto hEnd = m_evStPairHandlers.end();
+    auto nsEnd = m_evStPairNextStates.end();
+    for (auto ev: m_events) {
+        for (auto st: m_states) {
+            auto evstPair = std::make_pair(ev, st);
+            auto itrEvStH = m_evStPairHandlers.find(evstPair);
+            auto itrEvStNS = m_evStPairNextStates.find(evstPair);
+            if (itrEvStH == hEnd && itrEvStNS == nsEnd)
+                continue;
+
+            ss << "\tOn Event='" << e2s(ev) << "' when State='" << s2s(st);
+            ss << "' next State(s)=";
+            if (itrEvStNS != nsEnd)
+                dumpList(itrEvStNS->second, ss, s2s);
+            else
+                ss << "[]";
+
+            ss << " Handler=" << ((itrEvStH != hEnd && itrEvStH->second)
+                                    ? "{...}" : "{<NULL>}");
+            ss << std::endl;
+        }
+    }
+    return ss.str();
 }
 
 #endif // __FSM_HPP__

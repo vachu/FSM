@@ -15,7 +15,7 @@
  */
 
 /* 
- * File:   FsmT.h
+ * File:   Fsm.h
  * Author: Srivathsan Madhavan <m_dot_srivathsan_at_gmail_dot_com>
  *
  * Created on 2 January, 2017, 10:06 AM
@@ -32,7 +32,9 @@
 template <typename TEvent = int, typename TState = int>
 class Fsm {
 public:
-    typedef std::function<TState ()> Handler;
+    typedef std::function<std::string (const TEvent&)> Event2StringFunc;
+    typedef std::function<std::string (const TState&)> State2StringFunc;
+    typedef std::function<TState ()> HandlerFunc;
     typedef std::vector<TState> StateList;
     typedef std::vector<TEvent> EventList;
     
@@ -44,13 +46,17 @@ public:
     bool registerEventHandler(
             const TEvent& event,
             const TState& currentState,
-            Handler func,
+            HandlerFunc func,
             const StateList& nextStates = {}
         );
     bool raiseEvent(const TEvent& event);
     TState getCurrentState() const;
     
     operator bool() const;
+    std::string dump(
+                    Event2StringFunc e2s = nullptr,
+                    State2StringFunc s2s = nullptr
+                ) const;
     
 private:
     typedef std::pair<TEvent, TState> EventStatePair;
@@ -61,7 +67,10 @@ private:
     bool m_isFsmOk;
 
     std::map<EventStatePair, StateList> m_evStPairNextStates;
-    std::map<EventStatePair, Handler> m_evStPairHandlers;
+    std::map<EventStatePair, HandlerFunc> m_evStPairHandlers;
+    
+    Event2StringFunc m_ev2str;
+    State2StringFunc m_st2str;
 };
 
 #include "Fsm.hpp"
