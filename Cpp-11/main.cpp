@@ -15,6 +15,7 @@
  */
 
 #include <iostream>
+#include <utility>
 #include "Fsm.h"
 
 template <typename T>
@@ -31,19 +32,30 @@ std::string state2String(const T& val) {
     return ss.str();
 }
 
-int main(void) {
-    std::vector<int> events = {1, 2, 3};
-    std::vector<int> states = {11, 22, 33};
-    Fsm<> fsmObj(events, states, 11);
-    fsmObj.registerEventHandler(1, 11, nullptr, Fsm<int, int>::StateList({22}));
-    fsmObj.registerEventHandler(1, 22, nullptr, Fsm<int, int>::StateList({33}));
-    std::cout << fsmObj.dump(event2String<int>, state2String<int>) << std::endl;
-    
-//    std::vector<std::string> e = {"e1", "e2", "e3"};
-//    std::vector<std::string> s = {"s1", "s2", "s3"};
-//    Fsm<std::string, std::string> fsm2(e, s, s.back());
-//    std::cout << fsm2.dump(event2String<std::string>, state2String<std::string>)
-//            << std::endl;
+void OnStateChange(
+        const std::string& event,
+        const std::string& currState,
+        const std::string& nextState
+    )
+{
+    std::cout << "ON event='" << event << "' WHEN state='" << currState
+            << "' THEN GOTO state='" << nextState << "'" << std::endl;
+}
 
+int main(void) {
+    Fsm<std::string, std::string> turnstile(
+                {"Insert Coin", "Push Turnstile"},
+                {"Locked", "UNLOCKED"},
+                "Locked"
+            );
+    if (!turnstile) {
+        std::cout << turnstile.dump();
+        return 1;
+    }
+    turnstile.registerTransition("Insert Coin", "Locked", nullptr, {"UNLOCKED"});
+    turnstile.registerTransition("Push Turnstile", "UNLOCKED", nullptr, {"Locked"});
+    
+    turnstile.raiseEvent("Insert Coin", OnStateChange);
+    turnstile.raiseEvent("Push Turnstile", OnStateChange);
     return 0;
 }

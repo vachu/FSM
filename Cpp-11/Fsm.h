@@ -28,10 +28,13 @@
 #include <vector>
 #include <string>
 #include <functional>
+#include <initializer_list>
 
 template <typename TEvent = int, typename TState = int>
 class Fsm {
 public:
+    typedef std::function<void (const TEvent&, const TState&, const TState&)>
+        OnStateChange;
     typedef std::function<std::string (const TEvent&)> Event2StringFunc;
     typedef std::function<std::string (const TState&)> State2StringFunc;
     typedef std::function<TState ()> HandlerFunc;
@@ -41,15 +44,26 @@ public:
     Fsm() = delete;
     Fsm(const EventList& events, const StateList& states,
             const TState& initState);
+    Fsm(
+        std::initializer_list<TEvent> events,
+        std::initializer_list<TState> states,
+        const TState& initState
+    );
     virtual ~Fsm();
 
-    bool registerEventHandler(
+    bool registerTransition(
             const TEvent& event,
             const TState& currentState,
             HandlerFunc func,
             const StateList& nextStates = {}
         );
-    bool raiseEvent(const TEvent& event);
+    bool registerTransition(
+            const TEvent& event,
+            const TState& currentState,
+            HandlerFunc func,
+            std::initializer_list<TState> nextStates = {}
+        );
+    bool raiseEvent(const TEvent& event, OnStateChange funcStChg = nullptr);
     TState getCurrentState() const;
     
     operator bool() const;

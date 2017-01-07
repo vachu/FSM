@@ -55,13 +55,16 @@ namespace {
     void dumpList(
             const std::vector<T>& vec,
             std::stringstream& ss,
-            std::function<std::string (const T&)>& funcT2String
+            std::function<std::string (const T&)>& funcT2String = nullptr,
+            const std::string& delim = ", "
         )
     {
+        if (!funcT2String) funcT2String = default2String<T>;
+        
         ss << "[";
         int ctr = 0;
         for (auto v: vec) {
-            ss << (ctr++ > 0 ? ", " : "") << funcT2String(v);
+            ss  << (ctr++ > 0 ? delim : "") << funcT2String(v);
         }
         ss << "]";
     }
@@ -73,22 +76,21 @@ Fsm<TEvent, TState>::Fsm(
                         const StateList& states,
                         const TState& initState
                     )
+    : m_events(events), m_states(states), m_currentState(initState)
 {
     m_isFsmOk = (
             events.size() > 0 && states.size() > 0 && isIn(states, initState)
         );
-    if (!m_isFsmOk) return;
-    
-    if (hasDuplicates(events) || hasDuplicates(states)) {
-        m_isFsmOk = false;
-        return;
-    }
-
-    // Everything is fine; do the main initialization
-    m_currentState = initState;
-    m_events = events;
-    m_states = states;
+    if (m_isFsmOk) m_isFsmOk = (!hasDuplicates(events) && !hasDuplicates(states));
 }
+
+template <typename TEvent, typename TState>
+Fsm<TEvent, TState>::Fsm(
+        std::initializer_list<TEvent> events,
+        std::initializer_list<TState> states,
+        const TState& initState
+    ) : Fsm(EventList(events), StateList(states), initState)
+{}
 
 template <typename TEvent, typename TState>
 Fsm<TEvent, TState>::~Fsm() {
@@ -100,7 +102,22 @@ Fsm<TEvent, TState>::operator bool() const {
 }
 
 template <typename TEvent, typename TState>
-bool Fsm<TEvent, TState>::registerEventHandler(
+bool Fsm<TEvent, TState>::registerTransition(
+        const TEvent& event,
+        const TState& currentState,
+        HandlerFunc handler,
+        std::initializer_list<TState> nextStates
+    )
+{
+    return registerTransition(
+            event,
+            currentState,
+            handler,
+            StateList(nextStates)
+        );
+}
+template <typename TEvent, typename TState>
+bool Fsm<TEvent, TState>::registerTransition(
         const TEvent& event,
         const TState& currentState,
         HandlerFunc handler,
@@ -125,29 +142,35 @@ bool Fsm<TEvent, TState>::registerEventHandler(
 }
 
 template <typename TEvent, typename TState>
-bool Fsm<TEvent, TState>::raiseEvent(const TEvent& event) {
-    if (!isIn(m_events, event) || !(*this))
-        return false;
+bool Fsm<TEvent, TState>::raiseEvent(
+                            const TEvent& event,
+                            OnStateChange funcOnStateChange
+                        )
+{
+    if (!isIn(m_events, event) || !(*this)) return false;
     
     auto end = m_evStPairHandlers.end();
     auto evStPair = std::make_pair(event, m_currentState);
     auto itrFound = m_evStPairHandlers.find(evStPair);
-    auto handler = itrFound->second;
-    if (itrFound == end || !handler) {
+    if (itrFound == end || !(itrFound->second)) {
         if (m_evStPairNextStates.find(evStPair) != m_evStPairNextStates.end()) {
-            m_currentState = m_evStPairNextStates[evStPair][0];
+            auto nextState = m_evStPairNextStates[evStPair][0];
+            if (funcOnStateChange) funcOnStateChange(event, m_currentState, nextState);
+            m_currentState = nextState;
         }
         return true;
     }
     
+    auto& handler = itrFound->second;
     auto nextState = handler();
     if (m_evStPairNextStates.size() == 0) {
-        if (!isIn(m_events, nextState))
+        if (!isIn(m_states, nextState))
             return false;
     } else {
         if (!isIn(m_evStPairNextStates[evStPair], nextState))
             return false;
     }
+    if (funcOnStateChange) funcOnStateChange(event, m_currentState, nextState);
     m_currentState = nextState;
     return true;
 }
@@ -171,7 +194,7 @@ std::string Fsm<TEvent, TState>::dump(
         << "Valid Events : "; dumpList(m_events, ss, e2s); ss   << std::endl
         << "Valid States : "; dumpList(m_states, ss, s2s); ss   << std::endl
         << "Current State: " << s2s(m_currentState)             << std::endl
-        << "Transitions  : "                                    << std::endl;
+        << "Registered Transitions: "                           << std::endl;
     auto hEnd = m_evStPairHandlers.end();
     auto nsEnd = m_evStPairNextStates.end();
     for (auto ev: m_events) {
@@ -182,15 +205,10 @@ std::string Fsm<TEvent, TState>::dump(
             if (itrEvStH == hEnd && itrEvStNS == nsEnd)
                 continue;
 
-            ss << "\tOn Event='" << e2s(ev) << "' when State='" << s2s(st);
-            ss << "' next State(s)=";
-            if (itrEvStNS != nsEnd)
-                dumpList(itrEvStNS->second, ss, s2s);
-            else
-                ss << "[]";
-
-            ss << " Handler=" << ((itrEvStH != hEnd && itrEvStH->second)
-                                    ? "{...}" : "{<NULL>}");
+            ss << "\tON event='" << e2s(ev) << "' WHEN state='" << s2s(st);
+            ss << "' AND handler=" << ((itrEvStH != hEnd && itrEvStH->second)
+                                           ? "{....}" : "<NULL>");
+            ss << " THEN NEXT state="; dumpList(itrEvStNS->second, ss, s2s, " | ");
             ss << std::endl;
         }
     }
