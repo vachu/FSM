@@ -38,8 +38,8 @@ void OnStateChange(
         const std::string& nextState
     )
 {
-    std::cout << "ON event='" << event << "' WHEN state='" << currState
-            << "' THEN GOTO state='" << nextState << "'" << std::endl;
+    std::cout << "RAISED event='" << event << "' WHEN state='" << currState
+            << "'; GOING TO state='" << nextState << "'" << std::endl;
 }
 
 int main(void) {

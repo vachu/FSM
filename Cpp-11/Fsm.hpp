@@ -144,34 +144,35 @@ bool Fsm<TEvent, TState>::registerTransition(
 template <typename TEvent, typename TState>
 bool Fsm<TEvent, TState>::raiseEvent(
                             const TEvent& event,
-                            OnStateChange funcOnStateChange
+                            OnStateChangedFunc funcOnStateChange
                         )
 {
     if (!isIn(m_events, event) || !(*this)) return false;
     
-    auto end = m_evStPairHandlers.end();
-    auto evStPair = std::make_pair(event, m_currentState);
-    auto itrFound = m_evStPairHandlers.find(evStPair);
-    if (itrFound == end || !(itrFound->second)) {
-        if (m_evStPairNextStates.find(evStPair) != m_evStPairNextStates.end()) {
-            auto nextState = m_evStPairNextStates[evStPair][0];
-            if (funcOnStateChange) funcOnStateChange(event, m_currentState, nextState);
-            m_currentState = nextState;
+    auto end        = m_evStPairHandlers.end();
+    auto evStPair   = std::make_pair(event, m_currentState);
+    auto itrFound   = m_evStPairHandlers.find(evStPair);
+    auto nextState  = m_currentState;
+    auto handler    = (itrFound != end ? itrFound->second : nullptr);
+    if (!handler) {
+        if (m_evStPairNextStates.find(evStPair) != m_evStPairNextStates.end())
+            nextState = m_evStPairNextStates[evStPair][0];
+    } else {
+        nextState = handler();
+        if (m_evStPairNextStates.size() == 0) {
+            if (!isIn(m_states, nextState))
+                return false;
+        } else {
+            if (!isIn(m_evStPairNextStates[evStPair], nextState))
+                return false;
         }
-        return true;
     }
     
-    auto& handler = itrFound->second;
-    auto nextState = handler();
-    if (m_evStPairNextStates.size() == 0) {
-        if (!isIn(m_states, nextState))
-            return false;
-    } else {
-        if (!isIn(m_evStPairNextStates[evStPair], nextState))
-            return false;
+    if (m_currentState != nextState && funcOnStateChange) {
+        auto prevState = m_currentState;
+        m_currentState = nextState;
+        funcOnStateChange(event, prevState, nextState);
     }
-    if (funcOnStateChange) funcOnStateChange(event, m_currentState, nextState);
-    m_currentState = nextState;
     return true;
 }
 

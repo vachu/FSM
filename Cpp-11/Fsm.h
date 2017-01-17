@@ -34,7 +34,7 @@ template <typename TEvent = int, typename TState = int>
 class Fsm {
 public:
     typedef std::function<void (const TEvent&, const TState&, const TState&)>
-        OnStateChange;
+        OnStateChangedFunc;
     typedef std::function<std::string (const TEvent&)> Event2StringFunc;
     typedef std::function<std::string (const TState&)> State2StringFunc;
     typedef std::function<TState ()> HandlerFunc;
@@ -63,7 +63,7 @@ public:
             HandlerFunc func,
             std::initializer_list<TState> nextStates = {}
         );
-    bool raiseEvent(const TEvent& event, OnStateChange funcStChg = nullptr);
+    bool raiseEvent(const TEvent& event, OnStateChangedFunc funcStChg = nullptr);
     TState getCurrentState() const;
     
     operator bool() const;
