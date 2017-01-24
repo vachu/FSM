@@ -43,11 +43,12 @@ public:
     
     Fsm() = delete;
     Fsm(const EventList& events, const StateList& states,
-            const TState& initState);
+            const TState& initState, const std::string& name = "");
     Fsm(
         std::initializer_list<TEvent> events,
         std::initializer_list<TState> states,
-        const TState& initState
+        const TState& initState,
+        const std::string& name = ""
     );
     virtual ~Fsm();
 
@@ -79,6 +80,7 @@ private:
     EventList m_events;
     StateList m_states;
     bool m_isFsmOk;
+    std::string m_name;
 
     std::map<EventStatePair, StateList> m_evStPairNextStates;
     std::map<EventStatePair, HandlerFunc> m_evStPairHandlers;

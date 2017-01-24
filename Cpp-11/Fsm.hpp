@@ -74,22 +74,24 @@ template <typename TEvent, typename TState>
 Fsm<TEvent, TState>::Fsm(
                         const EventList& events,
                         const StateList& states,
-                        const TState& initState
+                        const TState& initState,
+                        const std::string& name
                     )
-    : m_events(events), m_states(states), m_currentState(initState)
+    : m_events(events), m_states(states), m_currentState(initState), m_name(name)
 {
     m_isFsmOk = (
-            events.size() > 0 && states.size() > 0 && isIn(states, initState)
+            events.size() > 0 && states.size() > 0 && isIn(states, initState) &&
+            !hasDuplicates(events) && !hasDuplicates(states)
         );
-    if (m_isFsmOk) m_isFsmOk = (!hasDuplicates(events) && !hasDuplicates(states));
 }
 
 template <typename TEvent, typename TState>
 Fsm<TEvent, TState>::Fsm(
         std::initializer_list<TEvent> events,
         std::initializer_list<TState> states,
-        const TState& initState
-    ) : Fsm(EventList(events), StateList(states), initState)
+        const TState& initState,
+        const std::string& name
+    ) : Fsm(EventList(events), StateList(states), initState, name)
 {}
 
 template <typename TEvent, typename TState>
@@ -144,7 +146,7 @@ bool Fsm<TEvent, TState>::registerTransition(
 template <typename TEvent, typename TState>
 bool Fsm<TEvent, TState>::raiseEvent(
                             const TEvent& event,
-                            OnStateChangedFunc funcOnStateChange
+                            OnStateChangedFunc funcOnStateChanged
                         )
 {
     if (!isIn(m_events, event) || !(*this)) return false;
@@ -168,10 +170,10 @@ bool Fsm<TEvent, TState>::raiseEvent(
         }
     }
     
-    if (m_currentState != nextState && funcOnStateChange) {
+    if (funcOnStateChanged) {
         auto prevState = m_currentState;
         m_currentState = nextState;
-        funcOnStateChange(event, prevState, nextState);
+        funcOnStateChanged(event, prevState, nextState);
     }
     return true;
 }
@@ -191,7 +193,8 @@ std::string Fsm<TEvent, TState>::dump(
     if (!s2s) s2s = default2String<TState>;
     
     std::stringstream ss;
-    ss  << "Status       : " << (m_isFsmOk ? "OK" : "ERROR")    << std::endl
+    ss  << "FSM Name     : '" << m_name << "'"                  << std::endl
+        << "Status       : " << (m_isFsmOk ? "OK" : "ERROR")    << std::endl
         << "Valid Events : "; dumpList(m_events, ss, e2s); ss   << std::endl
         << "Valid States : "; dumpList(m_states, ss, s2s); ss   << std::endl
         << "Current State: " << s2s(m_currentState)             << std::endl
